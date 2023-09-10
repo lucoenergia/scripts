@@ -1,21 +1,30 @@
+# Script to read Huawei inverter production hourly data through a REST API setting a dates interval
+
 import requests
 import time
 from datetime import datetime, timedelta
 from influxdb import InfluxDBClient
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from the .env file in the current directory
+load_dotenv()
 
 BASE_URL = "https://eu5.fusionsolar.huawei.com/thirdData"
 LOGIN_ENDPOINT = "/login"
 DATA_ENDPOINT = "/getKpiStationHour"
-USERNAME = ""
-PASSWORD = ""
+USERNAME = os.getenv("HUAWEI_USERNAME")
+print(USERNAME)
+PASSWORD = os.getenv("HUAWEI_PASSWORD")
 TOKEN_EXPIRATION = timedelta(minutes=30)
-STATION_CODE = ""
+STATION_CODE = os.getenv("HUAWEI_STATION_CODE")
 
-INFLUXDB_HOST = "localhost"
-INFLUXDB_PORT = 8086
-INFLUXDB_DATABASE = ""
-INFLUXDB_USER = ""
-INFLUXDB_PASSWORD = ""
+INFLUXDB_HOST = os.getenv("INFLUXDB_HOST")
+INFLUXDB_PORT = int(os.getenv("INFLUXDB_PORT"))
+INFLUXDB_DATABASE = os.getenv("INFLUXDB_DATABASE")
+INFLUXDB_USER = os.getenv("INFLUXDB_USER")
+INFLUXDB_PASSWORD = os.getenv("INFLUXDB_PASSWORD")
+
 
 def get_token():
     login_data = {
@@ -52,10 +61,10 @@ def insert_into_influxdb(data):
         
         json_body = [
             {
-                "measurement": "production",
+                "measurement": "energy",
                 "time": datetime.utcfromtimestamp(timestamp),
                 "fields": {
-                    "inverter-power": inverter_power
+                    "huawei-inverter-power-hourly": inverter_power
                 }
             }
         ]
@@ -66,8 +75,8 @@ def main():
     token = get_token()
     token_last_refreshed = datetime.now()
 
-    start_date = datetime(year=2023, month=8, day=22)  # Replace with your desired start date
-    end_date = datetime(year=2023, month=8, day=23)   # Replace with your desired end date
+    start_date = datetime(year=2023, month=9, day=9)  # Replace with your desired start date
+    end_date = datetime(year=2023, month=9, day=9)   # Replace with your desired end date
 
     current_date = start_date
     day_interval = timedelta(days=1)
