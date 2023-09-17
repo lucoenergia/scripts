@@ -1,3 +1,6 @@
+# Script to read Huawei inverter production in real time by hitting its REST API every 10 minutes and
+# calculating the difference between the total production retrieved from the API call with the previsous value
+
 import requests
 import time
 from datetime import datetime, timedelta
