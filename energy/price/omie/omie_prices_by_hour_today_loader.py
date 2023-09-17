@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_URL = "https://www.omie.es/es/file-download"
+BASE_PATH=os.getenv("BASE_PATH")
 FILENAME = "current_marginalpdbc.csv"
 
 INFLUXDB_HOST = os.getenv("INFLUXDB_HOST")
@@ -30,12 +31,12 @@ script_path = __file__
 script_name = os.path.splitext(os.path.basename(script_path))[0]
 
 # Logging configuration
-log_file_path = f"/home/vcm/sources/scripts/energy/price/omie/logs/{script_name}.log"
+log_file_path = f"{BASE_PATH}/logs/{script_name}.log"
 log_format = "%(asctime)s - %(levelname)s - %(message)s"
 logging.basicConfig(filename=log_file_path, encoding='utf-8', level=logging.DEBUG, format=log_format)
 
 # Create an InfluxDB client
-client = InfluxDBClient(host=INFLUXDB_HOST, port=INFLUXDB_PORT, database=INFLUXDB_DATABASE, username=INFLUXDB_USER, password=INFLUXDB_PASSWORD)
+influxDbClient = InfluxDBClient(host=INFLUXDB_HOST, port=INFLUXDB_PORT, database=INFLUXDB_DATABASE, username=INFLUXDB_USER, password=INFLUXDB_PASSWORD)
 
 # Function to convert a date to "yyyymmdd" format
 def convert_to_yyyymmdd(date):
@@ -108,7 +109,7 @@ def readFileAndStore():
                 }
             ]
 
-            client.write_points(price_hour_serie)
+            influxDbClient.write_points(price_hour_serie)
 
             if (hour == 24):
                 break        
@@ -133,5 +134,8 @@ downloadFile(current_date_yyyymmdd)
 readFileAndStore()
 
 removeFile()
+
+# Close the InfluxDB connection
+influxDbClient.close()
 
 logging.info("Process finished.")
