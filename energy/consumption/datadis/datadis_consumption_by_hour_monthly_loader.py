@@ -195,7 +195,7 @@ def load_consumption(token, month):
             if response.status_code == 200:
                 insert_into_influxdb(response.json())        
             else:
-                logging.error("Failed to fetch data. Reason: " + response.text)
+                logging.error(f"Failed to fetch data. Error code {response.status_code} Reason: {response.text}")
     
 def main():
 
