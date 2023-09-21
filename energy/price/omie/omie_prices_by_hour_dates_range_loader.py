@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_URL = "https://www.omie.es/es/file-download"
+BASE_PATH = os.getenv("BASE_PATH")
 FILENAME = "marginalpdbc.csv"
 
 INFLUXDB_HOST = os.getenv("INFLUXDB_HOST")
@@ -30,7 +31,7 @@ script_path = __file__
 script_name = os.path.splitext(os.path.basename(script_path))[0]
 
 # Logging configuration
-log_file_path = f"/home/vcm/sources/scripts/energy/price/omie/logs/{script_name}.log"
+log_file_path = f"{BASE_PATH}/logs/{script_name}.log"
 log_format = "%(asctime)s - %(levelname)s - %(message)s"
 logging.basicConfig(filename=log_file_path, encoding='utf-8', level=logging.DEBUG, format=log_format)
 
