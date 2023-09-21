@@ -1,9 +1,11 @@
-# Script to read Huawei inverter production hourly data through a REST API setting a dates interval
-
+##
+# Script to read Huawei inverter production hourly data through a REST API for current day
+##
 import requests
-import time
 from datetime import datetime, timedelta
+import pytz
 from influxdb import InfluxDBClient
+import logging
 import os
 from dotenv import load_dotenv
 
@@ -14,7 +16,6 @@ BASE_URL = "https://eu5.fusionsolar.huawei.com/thirdData"
 LOGIN_ENDPOINT = "/login"
 DATA_ENDPOINT = "/getKpiStationHour"
 USERNAME = os.getenv("HUAWEI_USERNAME")
-print(USERNAME)
 PASSWORD = os.getenv("HUAWEI_PASSWORD")
 TOKEN_EXPIRATION = timedelta(minutes=30)
 STATION_CODE = os.getenv("HUAWEI_STATION_CODE")
@@ -25,6 +26,20 @@ INFLUXDB_DATABASE = os.getenv("INFLUXDB_DATABASE")
 INFLUXDB_USER = os.getenv("INFLUXDB_USER")
 INFLUXDB_PASSWORD = os.getenv("INFLUXDB_PASSWORD")
 
+BASE_PATH=os.getenv("BASE_PATH")
+
+# Get the full path to the script
+script_path = __file__
+
+# Get the base name of the script (without extension)
+script_name = os.path.splitext(os.path.basename(script_path))[0]
+
+# Logging configuration
+log_file_path = f"{BASE_PATH}/logs/{script_name}.log"
+log_format = "%(asctime)s - %(levelname)s - %(message)s"
+logging.basicConfig(filename=log_file_path, encoding='utf-8', level=logging.INFO, format=log_format)
+
+logging.info(f"Process {script_name} started.")
 
 def get_token():
     login_data = {
@@ -47,7 +62,13 @@ def get_data(token, timestamp_milliseconds):
     }
     response = requests.post(BASE_URL + DATA_ENDPOINT, headers=headers, json=body)
     if response.status_code == 200:
-        return response.json()
+        data = response.json()
+
+        # If access frequency is too high, raise an exception
+        if data["failCode"] == 407:
+            raise Exception(f"Failed to retrieve data. Reason: {data['data']}")
+
+        return data
     else:
         raise Exception("Failed to fetch data")
     
@@ -61,48 +82,43 @@ def insert_into_influxdb(data):
         
         json_body = [
             {
-                "measurement": "energy",
+                "measurement": "energy_production_huawei_hour",
                 "time": datetime.utcfromtimestamp(timestamp),
                 "fields": {
-                    "huawei-inverter-power-hourly": inverter_power
+                    "inverter-power": inverter_power
                 }
             }
         ]
         
-        client.write_points(json_body)    
+        client.write_points(json_body)
+        
+    client.close()
+
+def getCurrentDate():
+    # Get current date
+    # Specify the time zone for Madrid
+    madrid_timezone = pytz.timezone('Europe/Madrid')
+    # Get the current date and time in Madrid's time zone
+    return datetime.now(madrid_timezone)      
 
 def main():
-    token = get_token()
-    token_last_refreshed = datetime.now()
+    try:
+        token = get_token()    
 
-    start_date = datetime(year=2023, month=9, day=9)  # Replace with your desired start date
-    end_date = datetime(year=2023, month=9, day=9)   # Replace with your desired end date
+        current_date = getCurrentDate()
 
-    current_date = start_date
-    day_interval = timedelta(days=1)
+        logging.info("Getting data for day " + datetime.strftime(current_date, "%Y-%m-%d"))
 
-    while current_date <= end_date:
-
-        timestamp_milliseconds = int(current_date.timestamp() * 1000)
-        print("Timestamp for", current_date, ":", timestamp_milliseconds)
-        current_date += day_interval
-
-        current_time = datetime.now()
-        time_since_refresh = current_time - token_last_refreshed
-
-        if time_since_refresh > TOKEN_EXPIRATION:
-            print("Token expired. Refreshing...")
-            token = get_token()
-            token_last_refreshed = current_time
-
-        try:
-            data = get_data(token, timestamp_milliseconds)
-            print("Received data:", data)
-            insert_into_influxdb(data)
-        except Exception as e:
-            print("Error:", e)
+        timestamp_milliseconds = int(current_date.timestamp() * 1000)        
         
-        #time.sleep(int(5*60))  # Sleep for 5 minutes
+        data = get_data(token, timestamp_milliseconds)            
+
+        insert_into_influxdb(data)
+
+    except Exception as e:
+        logging.error("Error:", e)        
+
+    logging.info(f"Process {script_name} finished.")
 
 if __name__ == "__main__":
     main()
