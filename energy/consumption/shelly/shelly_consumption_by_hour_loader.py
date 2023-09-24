@@ -153,7 +153,7 @@ def main():
 
     closeInfluxDbConnection(client)
 
-    #deleteShellyDataFile()
+    deleteShellyDataFile()
 
 
 if __name__ == "__main__":
