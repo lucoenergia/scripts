@@ -44,7 +44,7 @@ script_name = os.path.splitext(os.path.basename(script_path))[0]
 # Logging configuration
 log_file_path = f"{script_directory}/logs/{script_name}.log"
 log_format = "%(asctime)s - %(levelname)s - %(message)s"
-logging.basicConfig(filename=log_file_path, encoding='utf-8', level=logging.INFO, format=log_format)
+logging.basicConfig(filename=log_file_path, encoding='utf-8', level=logging.DEBUG, format=log_format)
 
 # Get current script name
 def get_script_name():
