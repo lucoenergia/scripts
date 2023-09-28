@@ -7,6 +7,7 @@ import random
 import string
 import argparse
 from datetime import datetime
+import pytz
 from influxdb import InfluxDBClient
 import logging
 import os
@@ -32,6 +33,9 @@ INFLUXDB_PASSWORD = os.getenv("INFLUXDB_PASSWORD")
 
 COMMUNITY_PARTNERS_FILE_PATH=os.getenv("COMMUNITY_PARTNERS_FILE_PATH")
 
+# Specify the time zone
+TIMEZONE = pytz.timezone('Europe/Madrid')
+
 # Get the absolute path of the currently executing script
 script_path = os.path.abspath(__file__)
 
@@ -44,7 +48,7 @@ script_name = os.path.splitext(os.path.basename(script_path))[0]
 # Logging configuration
 log_file_path = f"{script_directory}/logs/{script_name}.log"
 log_format = "%(asctime)s - %(levelname)s - %(message)s"
-logging.basicConfig(filename=log_file_path, encoding='utf-8', level=logging.DEBUG, format=log_format)
+logging.basicConfig(filename=log_file_path, encoding='utf-8', level=logging.INFO, format=log_format)
 
 # Get current script name
 def get_script_name():
@@ -121,10 +125,16 @@ def get_influx_date(date, time):
     datetime_str = f"{date} {time}"
 
     # Parse the concatenated string into a datetime object
-    dt_obj = datetime.strptime(datetime_str, "%Y/%m/%d %H:%M")
+    datetime_obj = datetime.strptime(datetime_str, "%Y/%m/%d %H:%M")    
+
+    # Set Madrid timezone to date
+    localized_datetime:datetime = TIMEZONE.localize(datetime_obj)
+
+    # Convert localized date to UTC
+    utc_datetime = localized_datetime.astimezone(pytz.utc)
 
     # Format the datetime object as an InfluxDB-compatible timestamp string (RFC3339 format)
-    return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+    return utc_datetime.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 # Receive a list of consumptions by month for a supply and insert the data into an InfluxDB
 def insert_into_influxdb(supply_consumptions):
@@ -185,7 +195,7 @@ def load_consumption(token, month):
         for supply in supplies:
             cups = supply["cups"]
             
-            logging.debug(f"Cups: {cups}")
+            logging.info(f"Cups: {cups}")
 
             query_params["cups"] = cups
             query_params["authorizedNif"] = dni
